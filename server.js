@@ -922,7 +922,7 @@ function startServer(portToTry) {
     }
   });
 
-  server.listen(portToTry, () => {
+  server.listen(portToTry, '0.0.0.0', () => {
     console.log(`\n======================================================`);
     console.log(`🚀 Sagar Portfolio is live!`);
     console.log(`📡 URL: http://localhost:${portToTry}`);
@@ -932,3 +932,5 @@ function startServer(portToTry) {
 }
 
 startServer(PORT);
+
+module.exports = server;

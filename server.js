@@ -215,10 +215,45 @@ function updatePortfolioDataPersonal(updates) {
   }
 }
 
+function getOwnerPin() {
+  try {
+    delete require.cache[require.resolve(PORTFOLIO_DATA_FILE)];
+    const pData = require(PORTFOLIO_DATA_FILE);
+    return (pData && pData.admin && pData.admin.pin) ? String(pData.admin.pin).trim() : "2026";
+  } catch (err) {
+    return "2026";
+  }
+}
+
+function updatePortfolioDataAdmin(newPin) {
+  try {
+    let content = fs.readFileSync(PORTFOLIO_DATA_FILE, 'utf8');
+    const pinRegex = /(admin\s*:\s*\{[\s\S]*?pin\s*:\s*)(["'`])(.*?)(["'`])/;
+    if (pinRegex.test(content)) {
+      content = content.replace(pinRegex, `$1${JSON.stringify(String(newPin).trim())}`);
+      fs.writeFileSync(PORTFOLIO_DATA_FILE, content, 'utf8');
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.error('Error updating admin PIN in portfolio-data.js:', err);
+    return false;
+  }
+}
+
+function verifyOwnerAccess(req) {
+  const pinHeader = req.headers['x-admin-pin'] || req.headers['authorization'] || '';
+  const expectedPin = getOwnerPin();
+  if (pinHeader && String(pinHeader).replace(/^Bearer\s+/i, '').trim() === expectedPin) {
+    return true;
+  }
+  return false;
+}
+
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-pin, Authorization');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
 
   if (req.method === 'OPTIONS') {
@@ -237,12 +272,37 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // API 1B: POST /api/verify-pin
+  if (req.method === 'POST' && reqUrl === '/api/verify-pin') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { pin } = JSON.parse(body || '{}');
+        const expectedPin = getOwnerPin();
+        const valid = String(pin || '').trim() === expectedPin;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, valid }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
   // API 2: POST /api/add-project
   if (req.method === 'POST' && reqUrl === '/api/add-project') {
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
+        if (!verifyOwnerAccess(req)) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: Only portfolio owner (Hemasagar) can modify data.' }));
+          return;
+        }
+
         const item = JSON.parse(body || '{}');
         if (!item.title) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -297,6 +357,12 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
+        if (!verifyOwnerAccess(req)) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: Only portfolio owner (Hemasagar) can modify data.' }));
+          return;
+        }
+
         const { id, index } = JSON.parse(body || '{}');
         let list = readPortfolioDataProjects();
 
@@ -324,6 +390,12 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
+        if (!verifyOwnerAccess(req)) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: Only portfolio owner (Hemasagar) can modify data.' }));
+          return;
+        }
+
         const item = JSON.parse(body || '{}');
         let list = readPortfolioDataProjects();
         let targetIdx = -1;
@@ -387,6 +459,12 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
+        if (!verifyOwnerAccess(req)) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: Only portfolio owner (Hemasagar) can modify data.' }));
+          return;
+        }
+
         const item = JSON.parse(body || '{}');
         if (!item.title) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -442,6 +520,12 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
+        if (!verifyOwnerAccess(req)) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: Only portfolio owner (Hemasagar) can modify data.' }));
+          return;
+        }
+
         const { id, index } = JSON.parse(body || '{}');
         let list = readPortfolioDataAchievements();
 
@@ -469,6 +553,12 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
+        if (!verifyOwnerAccess(req)) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: Only portfolio owner (Hemasagar) can modify data.' }));
+          return;
+        }
+
         const item = JSON.parse(body || '{}');
         let list = readPortfolioDataAchievements();
         let targetIdx = -1;
@@ -532,6 +622,12 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
+        if (!verifyOwnerAccess(req)) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: Only portfolio owner (Hemasagar) can modify data.' }));
+          return;
+        }
+
         const item = JSON.parse(body || '{}');
         const role = (item.role || item.education || item.title || '').trim();
         const company = (item.company || item.university || item.Branch || item.organization || '').trim();
@@ -584,6 +680,12 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
+        if (!verifyOwnerAccess(req)) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: Only portfolio owner (Hemasagar) can modify data.' }));
+          return;
+        }
+
         const item = JSON.parse(body || '{}');
         let list = readPortfolioDataVisaCards();
         let targetIdx = -1;
@@ -641,6 +743,12 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
+        if (!verifyOwnerAccess(req)) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: Only portfolio owner (Hemasagar) can modify data.' }));
+          return;
+        }
+
         const { id, index } = JSON.parse(body || '{}');
         let list = readPortfolioDataVisaCards();
 
@@ -675,12 +783,22 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
-        const { name, role, email, avatar } = JSON.parse(body || '{}');
+        if (!verifyOwnerAccess(req)) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: Only portfolio owner (Hemasagar) can modify data.' }));
+          return;
+        }
+
+        const { name, role, email, avatar, pin } = JSON.parse(body || '{}');
         const updates = {};
         if (typeof name === 'string' && name.trim()) updates.name = name.trim();
         if (typeof role === 'string' && role.trim()) updates.role = role.trim();
         if (typeof email === 'string' && email.trim()) updates.email = email.trim();
         if (typeof avatar === 'string' && avatar.trim()) updates.avatar = avatar.trim();
+
+        if (typeof pin === 'string' && pin.trim().length >= 4) {
+          updatePortfolioDataAdmin(pin.trim());
+        }
 
         const saved = updatePortfolioDataPersonal(updates);
         const updatedPersonal = readPortfolioDataPersonal();
@@ -701,6 +819,12 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
+        if (!verifyOwnerAccess(req)) {
+          res.writeHead(403, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Unauthorized: Only portfolio owner (Hemasagar) can modify data.' }));
+          return;
+        }
+
         const payload = JSON.parse(body || '{}');
         const dataUri = payload.data || payload.image || '';
         if (!dataUri) {

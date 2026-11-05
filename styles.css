@@ -522,3 +522,29 @@ body {
   color: #fde68a !important;
   text-shadow: 0 0 10px #f59e0b, 0 0 20px rgba(245, 158, 11, 0.7);
 }
+
+
+/* ==========================================================================
+   OWNER / ADMIN ACCESS CONTROL (Only Hemasagar can add/edit/delete)
+   ========================================================================== */
+body:not(.is-admin-mode) .admin-only-btn,
+body:not(.is-admin-mode) .admin-only-card,
+body:not(.is-admin-mode) .admin-only-action {
+  display: none !important;
+}
+
+body.is-admin-mode .admin-only-btn {
+  display: inline-flex !important;
+}
+
+body.is-admin-mode .admin-only-card {
+  display: flex !important;
+}
+
+body.is-admin-mode .admin-only-action {
+  display: inline-flex !important;
+}
+
+.owner-pill {
+  transition: all 0.25s ease;
+}

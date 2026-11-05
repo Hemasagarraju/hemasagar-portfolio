@@ -12,8 +12,42 @@
   let isAudioPlaying = false;
   let audioEl = null;
 
+  let isAdmin = localStorage.getItem('portfolio_is_admin') === 'true';
+  let adminPin = localStorage.getItem('portfolio_admin_pin') || '2026';
+
+  function getAuthHeaders() {
+    const pin = localStorage.getItem('portfolio_admin_pin') || adminPin || '2026';
+    return {
+      'Content-Type': 'application/json',
+      'x-admin-pin': pin
+    };
+  }
+
+  function syncAdminModeUI() {
+    if (isAdmin) {
+      document.body.classList.add('is-admin-mode');
+      const badge = document.getElementById('owner-active-badge');
+      if (badge) {
+        badge.classList.remove('hidden');
+        badge.classList.add('inline-flex');
+      }
+      const label = document.getElementById('nav-account-label');
+      if (label) label.textContent = 'Account';
+    } else {
+      document.body.classList.remove('is-admin-mode');
+      const badge = document.getElementById('owner-active-badge');
+      if (badge) {
+        badge.classList.add('hidden');
+        badge.classList.remove('inline-flex');
+      }
+      const label = document.getElementById('nav-account-label');
+      if (label) label.textContent = 'Owner Login';
+    }
+  }
+
   function init() {
     loadData();
+    syncAdminModeUI();
     renderAll();
     setupEventListeners();
     setupAudio();
@@ -111,6 +145,12 @@
       }
     } catch (e) {
       console.error('Error loading stored profile & avatar:', e);
+    }
+
+    if (currentData.admin && currentData.admin.pin) {
+      if (!localStorage.getItem('portfolio_admin_pin')) {
+        adminPin = String(currentData.admin.pin).trim();
+      }
     }
   }
 
@@ -540,6 +580,23 @@
     } else if (cmd === 'clear') {
       window.clearTerminal();
       return;
+    } else if (cmd.startsWith('login ') || cmd.startsWith('admin ') || cmd.startsWith('auth ')) {
+      const parts = rawCmd.trim().split(/\s+/);
+      const enteredPin = parts[1] || '';
+      if (enteredPin === adminPin) {
+        isAdmin = true;
+        localStorage.setItem('portfolio_is_admin', 'true');
+        localStorage.setItem('portfolio_admin_pin', enteredPin);
+        syncAdminModeUI();
+        renderAll();
+        showToast('👑 Owner Mode unlocked via Terminal!');
+        responseHtml = `<span class="text-emerald-400 font-bold">👑 Access Granted! Welcome back, Hemasagar. Owner Mode is now ACTIVE. You can now add, edit, and delete projects and achievements.</span>`;
+      } else {
+        responseHtml = `<span class="text-red-400 font-bold">❌ Access Denied: Incorrect PIN.</span>`;
+      }
+    } else if (cmd === 'logout' || cmd === 'lock') {
+      window.logoutAdmin();
+      responseHtml = `<span class="text-amber-300 font-bold">🔒 Locked into Visitor Mode. Add/edit controls hidden.</span>`;
     } else if (cmd.startsWith('theme ')) {
       const t = cmd.split(' ')[1];
       if (['emerald', 'cyan', 'amber'].includes(t)) {
@@ -557,6 +614,8 @@
         • <span class="text-pink-400 font-bold">skills</span> : Tech stack and languages<br>
         • <span class="text-indigo-400 font-bold">projects</span> : List portfolio projects<br>
         • <span class="text-emerald-300 font-bold">repo</span> : Portfolio GitHub repository<br>
+        • <span class="text-emerald-400 font-bold">login &lt;pin&gt;</span> : Unlock owner mode (default PIN: 2026)<br>
+        • <span class="text-amber-400 font-bold">logout</span> : Lock portfolio back to visitor mode<br>
         • <span class="text-amber-400 font-bold">theme &lt;color&gt;</span> : emerald | cyan | amber<br>
         • <span class="text-zinc-400 font-bold">clear</span> : Clear terminal output
       `;
@@ -649,21 +708,35 @@
     const projs = currentData.projects || [];
 
     if (projs.length === 0) {
-      grid.innerHTML = `
-        <div class="col-span-full py-16 px-6 text-center border-2 border-dashed border-zinc-300 rounded-3xl bg-zinc-50/80">
-          <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-3xl font-bold shadow-sm">
-            📁
+      if (isAdmin) {
+        grid.innerHTML = `
+          <div class="col-span-full py-16 px-6 text-center border-2 border-dashed border-zinc-300 rounded-3xl bg-zinc-50/80">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-3xl font-bold shadow-sm">
+              📁
+            </div>
+            <h3 class="text-xl font-extrabold text-zinc-900 mb-2">No Projects Added Yet</h3>
+            <p class="text-sm text-zinc-600 max-w-md mx-auto mb-6 leading-relaxed">
+              You are in Owner Mode. Click the button below to add your project name, title, live URL, and GitHub repository!
+            </p>
+            <button type="button" onclick="window.openAddProjectModal()" class="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-[#FBC138] hover:bg-amber-400 text-black font-extrabold text-sm border-2 border-black shadow-[4px_4px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0px_#000] transition-all cursor-pointer">
+              <span class="text-base font-bold">➕</span>
+              <span>Add Your First Project</span>
+            </button>
           </div>
-          <h3 class="text-xl font-extrabold text-zinc-900 mb-2">No Projects Added Yet</h3>
-          <p class="text-sm text-zinc-600 max-w-md mx-auto mb-6 leading-relaxed">
-            You don't need to touch any code! Click the button below to add your project name, title, live URL, and GitHub repository directly from the website.
-          </p>
-          <button type="button" onclick="window.openAddProjectModal()" class="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-[#FBC138] hover:bg-amber-400 text-black font-extrabold text-sm border-2 border-black shadow-[4px_4px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0px_#000] transition-all cursor-pointer">
-            <span class="text-base font-bold">➕</span>
-            <span>Add Your First Project</span>
-          </button>
-        </div>
-      `;
+        `;
+      } else {
+        grid.innerHTML = `
+          <div class="col-span-full py-16 px-6 text-center border-2 border-dashed border-zinc-300 rounded-3xl bg-zinc-50/80">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-3xl font-bold shadow-sm">
+              🚀
+            </div>
+            <h3 class="text-xl font-extrabold text-zinc-900 mb-2">Featured Projects Coming Soon</h3>
+            <p class="text-sm text-zinc-600 max-w-md mx-auto leading-relaxed">
+              Exciting full-stack web applications, AI models, and open-source tools are currently being crafted.
+            </p>
+          </div>
+        `;
+      }
       return;
     }
 
@@ -681,14 +754,14 @@
       </button>
     `).join('');
 
-    const addCardHtml = `
-      <button type="button" onclick="window.openAddProjectModal()" class="h-32 border-2 border-dashed border-zinc-300 hover:border-black rounded-3xl bg-zinc-50/60 hover:bg-amber-50/60 transition-all flex flex-col items-center justify-center gap-2 p-6 cursor-pointer group">
+    const addCardHtml = isAdmin ? `
+      <button type="button" onclick="window.openAddProjectModal()" class="admin-only-card h-32 border-2 border-dashed border-zinc-300 hover:border-black rounded-3xl bg-zinc-50/60 hover:bg-amber-50/60 transition-all flex flex-col items-center justify-center gap-2 p-6 cursor-pointer group">
         <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-800 group-hover:bg-[#FBC138] flex items-center justify-center font-bold text-lg border border-black shadow-[2px_2px_0px_#000] transition-all">
           ➕
         </div>
         <span class="text-sm font-extrabold text-zinc-800 group-hover:text-black">+ Add Another Project</span>
       </button>
-    `;
+    ` : '';
 
     grid.innerHTML = cardsHtml + addCardHtml;
   }
@@ -745,14 +818,24 @@
     const cards = currentData.visaCards || [];
 
     if (cards.length === 0) {
-      track.innerHTML = `
-        <div class="visa-card-item p-6 flex flex-col justify-center items-center text-center font-mono border-2 border-dashed border-zinc-700 bg-zinc-900/60 cursor-pointer" onclick="window.openAddExperienceModal()">
-          <span class="text-4xl mb-3">💼</span>
-          <div class="font-bold text-base text-zinc-200 mb-1">No Experience Added Yet</div>
-          <p class="text-xs text-zinc-400 mb-4 max-w-xs">Click here to add your education, roles, or internships directly on the website!</p>
-          <span class="px-4 py-2 bg-[#FBC138] text-black font-extrabold text-xs rounded-xl shadow cursor-pointer">➕ Add Experience</span>
-        </div>
-      `;
+      if (isAdmin) {
+        track.innerHTML = `
+          <div class="visa-card-item p-6 flex flex-col justify-center items-center text-center font-mono border-2 border-dashed border-zinc-700 bg-zinc-900/60 cursor-pointer" onclick="window.openAddExperienceModal()">
+            <span class="text-4xl mb-3">💼</span>
+            <div class="font-bold text-base text-zinc-200 mb-1">No Experience Added Yet</div>
+            <p class="text-xs text-zinc-400 mb-4 max-w-xs">You are in Owner Mode. Click below to add your education, roles, or internships directly on the website!</p>
+            <span class="px-4 py-2 bg-[#FBC138] text-black font-extrabold text-xs rounded-xl shadow cursor-pointer">➕ Add Experience</span>
+          </div>
+        `;
+      } else {
+        track.innerHTML = `
+          <div class="visa-card-item p-6 flex flex-col justify-center items-center text-center font-mono border border-zinc-800 bg-zinc-900/60">
+            <span class="text-4xl mb-3">💼</span>
+            <div class="font-bold text-base text-zinc-200 mb-1">Career & Academic Credentials</div>
+            <p class="text-xs text-zinc-400 max-w-xs">Credentials and milestones will be showcased here.</p>
+          </div>
+        `;
+      }
       return;
     }
 
@@ -789,15 +872,15 @@
       `;
     }).join('');
 
-    const addCardHtml = `
-      <div class="visa-card-item p-6 flex flex-col justify-center items-center text-center font-mono border-2 border-dashed border-zinc-700 hover:border-amber-400 bg-zinc-900/40 hover:bg-zinc-900/70 transition-all cursor-pointer group" onclick="window.openAddExperienceModal()">
+    const addCardHtml = isAdmin ? `
+      <div class="admin-only-card visa-card-item p-6 flex flex-col justify-center items-center text-center font-mono border-2 border-dashed border-zinc-700 hover:border-amber-400 bg-zinc-900/40 hover:bg-zinc-900/70 transition-all cursor-pointer group" onclick="window.openAddExperienceModal()">
         <div class="w-12 h-12 rounded-full bg-amber-400/20 text-amber-400 group-hover:bg-[#FBC138] group-hover:text-black flex items-center justify-center text-xl font-bold mb-3 transition-colors">
           ➕
         </div>
         <div class="font-bold text-sm text-zinc-300 group-hover:text-white">+ Add Another Experience</div>
         <p class="text-[11px] text-zinc-500 mt-1">Education, internship or role</p>
       </div>
-    `;
+    ` : '';
 
     track.innerHTML = cardsHtml + addCardHtml;
   }
@@ -810,14 +893,24 @@
     const achs = currentData.achievements || [];
 
     if (achs.length === 0) {
-      track.innerHTML = `
-        <div class="visa-card-item p-6 flex flex-col justify-center items-center text-center font-mono border-2 border-dashed border-zinc-700 bg-zinc-900/60 cursor-pointer" onclick="window.openAddAchievementModal()">
-          <span class="text-4xl mb-3">🏆</span>
-          <div class="font-bold text-base text-zinc-200 mb-1">No Achievements Added Yet</div>
-          <p class="text-xs text-zinc-400 mb-4 max-w-xs">Click here to add your certifications, awards, hackathons, and honors!</p>
-          <span class="px-4 py-2 bg-[#FBC138] text-black font-extrabold text-xs rounded-xl shadow cursor-pointer">➕ Add Achievement</span>
-        </div>
-      `;
+      if (isAdmin) {
+        track.innerHTML = `
+          <div class="visa-card-item p-6 flex flex-col justify-center items-center text-center font-mono border-2 border-dashed border-zinc-700 bg-zinc-900/60 cursor-pointer" onclick="window.openAddAchievementModal()">
+            <span class="text-4xl mb-3">🏆</span>
+            <div class="font-bold text-base text-zinc-200 mb-1">No Achievements Added Yet</div>
+            <p class="text-xs text-zinc-400 mb-4 max-w-xs">You are in Owner Mode. Click below to add your certifications, awards, hackathons, and honors!</p>
+            <span class="px-4 py-2 bg-[#FBC138] text-black font-extrabold text-xs rounded-xl shadow cursor-pointer">➕ Add Achievement</span>
+          </div>
+        `;
+      } else {
+        track.innerHTML = `
+          <div class="visa-card-item p-6 flex flex-col justify-center items-center text-center font-mono border border-zinc-800 bg-zinc-900/60">
+            <span class="text-4xl mb-3">🏆</span>
+            <div class="font-bold text-base text-zinc-200 mb-1">Key Achievements</div>
+            <p class="text-xs text-zinc-400 max-w-xs">Awards, certifications, and honors will be showcased here.</p>
+          </div>
+        `;
+      }
       return;
     }
 
@@ -848,15 +941,15 @@
       </div>
     `).join('');
 
-    const addCardHtml = `
-      <div class="visa-card-item p-6 flex flex-col justify-center items-center text-center font-mono border-2 border-dashed border-zinc-700 hover:border-amber-400 bg-zinc-900/40 hover:bg-zinc-900/70 transition-all cursor-pointer group" onclick="window.openAddAchievementModal()">
+    const addCardHtml = isAdmin ? `
+      <div class="admin-only-card visa-card-item p-6 flex flex-col justify-center items-center text-center font-mono border-2 border-dashed border-zinc-700 hover:border-amber-400 bg-zinc-900/40 hover:bg-zinc-900/70 transition-all cursor-pointer group" onclick="window.openAddAchievementModal()">
         <div class="w-12 h-12 rounded-full bg-amber-400/20 text-amber-400 group-hover:bg-[#FBC138] group-hover:text-black flex items-center justify-center text-xl font-bold mb-3 transition-colors">
           ➕
         </div>
         <div class="font-bold text-sm text-zinc-300 group-hover:text-white">+ Add Another Achievement</div>
         <p class="text-[11px] text-zinc-500 mt-1">Hackathons, awards & certificates</p>
       </div>
-    `;
+    ` : '';
 
     track.innerHTML = cardsHtml + addCardHtml;
   }
@@ -923,12 +1016,14 @@
               GitHub
             </a>
           ` : ''}
-          <button type="button" onclick="window.openEditProjectModal(${idx})" class="py-2.5 px-3 bg-zinc-100 text-zinc-800 rounded-xl font-bold text-xs hover:bg-zinc-200 transition-colors border border-zinc-300 cursor-pointer" title="Edit this project">
-            ✏️ Edit
-          </button>
-          <button type="button" onclick="window.deleteProject(${idx})" class="py-2.5 px-3 bg-red-50 text-red-600 rounded-xl font-bold text-xs hover:bg-red-100 transition-colors border border-red-200 cursor-pointer" title="Delete this project">
-            🗑️ Delete
-          </button>
+          ${isAdmin ? `
+            <button type="button" onclick="window.openEditProjectModal(${idx})" class="admin-only-action py-2.5 px-3 bg-zinc-100 text-zinc-800 rounded-xl font-bold text-xs hover:bg-zinc-200 transition-colors border border-zinc-300 cursor-pointer" title="Edit this project">
+              ✏️ Edit
+            </button>
+            <button type="button" onclick="window.deleteProject(${idx})" class="admin-only-action py-2.5 px-3 bg-red-50 text-red-600 rounded-xl font-bold text-xs hover:bg-red-100 transition-colors border border-red-200 cursor-pointer" title="Delete this project">
+              🗑️ Delete
+            </button>
+          ` : ''}
         </div>
       </div>
     `;
@@ -943,6 +1038,11 @@
 
   // Add Project Modal Controls
   window.openAddProjectModal = function () {
+    if (!isAdmin) {
+      window.openOwnerLoginModal();
+      showToast('🔒 Only the portfolio owner can add projects.');
+      return;
+    }
     const modal = document.getElementById('add-project-modal');
     if (modal) modal.classList.add('open');
     const input = document.getElementById('new-proj-title');
@@ -957,6 +1057,11 @@
   // In-Website Add Project Handler
   window.handleAddNewProject = async function (event) {
     if (event) event.preventDefault();
+    if (!isAdmin) {
+      window.openOwnerLoginModal();
+      showToast('🔒 Only the portfolio owner can add projects.');
+      return;
+    }
 
     const title = document.getElementById('new-proj-title')?.value.trim();
     const url = document.getElementById('new-proj-url')?.value.trim();
@@ -1003,7 +1108,7 @@
     try {
       await fetch('/api/add-project', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(newProject)
       });
     } catch (err) {
@@ -1022,6 +1127,11 @@
 
   // Delete Project Handler
   window.deleteProject = async function (idx) {
+    if (!isAdmin) {
+      window.openOwnerLoginModal();
+      showToast('🔒 Only the portfolio owner can delete projects.');
+      return;
+    }
     if (!currentData.projects || !currentData.projects[idx]) return;
     const proj = currentData.projects[idx];
 
@@ -1040,7 +1150,7 @@
     try {
       await fetch('/api/delete-project', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ id: proj.id, index: idx })
       });
     } catch (err) {}
@@ -1053,6 +1163,11 @@
 
   // Edit Project Controls
   window.openEditProjectModal = function (idx) {
+    if (!isAdmin) {
+      window.openOwnerLoginModal();
+      showToast('🔒 Only the portfolio owner can edit projects.');
+      return;
+    }
     const projs = currentData.projects || [];
     const p = projs[idx];
     if (!p) return;
@@ -1083,6 +1198,11 @@
 
   window.handleSaveEditProject = async function (event) {
     if (event) event.preventDefault();
+    if (!isAdmin) {
+      window.openOwnerLoginModal();
+      showToast('🔒 Only the portfolio owner can edit projects.');
+      return;
+    }
 
     const idx = parseInt(document.getElementById('edit-proj-idx')?.value, 10);
     if (isNaN(idx) || !currentData.projects || !currentData.projects[idx]) return;
@@ -1122,7 +1242,7 @@
     try {
       await fetch('/api/edit-project', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ index: idx, id: current.id, ...current })
       });
     } catch (err) {}
@@ -1135,6 +1255,11 @@
 
   // Achievement Modal Controls
   window.openAddAchievementModal = function () {
+    if (!isAdmin) {
+      window.openOwnerLoginModal();
+      showToast('🔒 Only the portfolio owner can add achievements.');
+      return;
+    }
     const modal = document.getElementById('add-achievement-modal');
     if (modal) modal.classList.add('open');
     const input = document.getElementById('new-ach-title');
@@ -1177,12 +1302,14 @@
           ` : `
             <div class="flex-1 text-xs font-mono text-zinc-400 italic">Verified Portfolio Milestone</div>
           `}
-          <button type="button" onclick="window.openEditAchievementModal(${idx})" class="py-2.5 px-3 bg-zinc-100 text-zinc-800 rounded-xl font-bold text-xs hover:bg-zinc-200 transition-colors border border-zinc-300 cursor-pointer" title="Edit this achievement">
-            ✏️ Edit
-          </button>
-          <button type="button" onclick="window.deleteAchievement(${idx})" class="py-2.5 px-3 bg-red-50 text-red-600 rounded-xl font-bold text-xs hover:bg-red-100 transition-colors border border-red-200 cursor-pointer" title="Delete this achievement">
-            🗑️ Delete
-          </button>
+          ${isAdmin ? `
+            <button type="button" onclick="window.openEditAchievementModal(${idx})" class="admin-only-action py-2.5 px-3 bg-zinc-100 text-zinc-800 rounded-xl font-bold text-xs hover:bg-zinc-200 transition-colors border border-zinc-300 cursor-pointer" title="Edit this achievement">
+              ✏️ Edit
+            </button>
+            <button type="button" onclick="window.deleteAchievement(${idx})" class="admin-only-action py-2.5 px-3 bg-red-50 text-red-600 rounded-xl font-bold text-xs hover:bg-red-100 transition-colors border border-red-200 cursor-pointer" title="Delete this achievement">
+              🗑️ Delete
+            </button>
+          ` : ''}
         </div>
       </div>
     `;
@@ -1197,6 +1324,11 @@
 
   window.handleAddNewAchievement = async function (event) {
     if (event) event.preventDefault();
+    if (!isAdmin) {
+      window.openOwnerLoginModal();
+      showToast('🔒 Only the portfolio owner can add achievements.');
+      return;
+    }
 
     const title = document.getElementById('new-ach-title')?.value.trim();
     const issuer = document.getElementById('new-ach-issuer')?.value.trim();
@@ -1245,7 +1377,7 @@
     try {
       await fetch('/api/add-achievement', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(newAchievement)
       });
     } catch (err) {
@@ -1262,6 +1394,11 @@
   };
 
   window.deleteAchievement = async function (idx) {
+    if (!isAdmin) {
+      window.openOwnerLoginModal();
+      showToast('🔒 Only the portfolio owner can delete achievements.');
+      return;
+    }
     if (!currentData.achievements || !currentData.achievements[idx]) return;
     const ach = currentData.achievements[idx];
 
@@ -1278,7 +1415,7 @@
     try {
       await fetch('/api/delete-achievement', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ id: ach.id, index: idx })
       });
     } catch (err) {}
@@ -1290,6 +1427,11 @@
 
   // Edit Achievement Controls
   window.openEditAchievementModal = function (idx) {
+    if (!isAdmin) {
+      window.openOwnerLoginModal();
+      showToast('🔒 Only the portfolio owner can edit achievements.');
+      return;
+    }
     const achs = currentData.achievements || [];
     const a = achs[idx];
     if (!a) return;
@@ -1319,6 +1461,11 @@
 
   window.handleSaveEditAchievement = async function (event) {
     if (event) event.preventDefault();
+    if (!isAdmin) {
+      window.openOwnerLoginModal();
+      showToast('🔒 Only the portfolio owner can edit achievements.');
+      return;
+    }
 
     const idx = parseInt(document.getElementById('edit-ach-idx')?.value, 10);
     if (isNaN(idx) || !currentData.achievements || !currentData.achievements[idx]) return;
@@ -1360,7 +1507,7 @@
     try {
       await fetch('/api/edit-achievement', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ index: idx, id: current.id, ...current })
       });
     } catch (err) {}
@@ -1399,12 +1546,16 @@
         <p class="text-zinc-700 text-sm leading-relaxed">${c.description || 'Verified academic, professional or open-source engineering credential.'}</p>
 
         <div class="flex items-center gap-3 pt-4 border-t border-zinc-200">
-          <button type="button" onclick="window.openEditExperienceModal(${idx})" class="flex-1 py-2.5 bg-[#FBC138] text-black font-extrabold text-xs rounded-xl border border-black hover:bg-amber-400 transition-colors cursor-pointer">
-            ✏️ Edit Experience
-          </button>
-          <button type="button" onclick="window.deleteExperience(${idx})" class="py-2.5 px-4 bg-red-50 text-red-600 rounded-xl font-bold text-xs hover:bg-red-100 transition-colors border border-red-200 cursor-pointer" title="Delete this experience card">
-            🗑️ Delete
-          </button>
+          ${isAdmin ? `
+            <button type="button" onclick="window.openEditExperienceModal(${idx})" class="admin-only-action flex-1 py-2.5 bg-[#FBC138] text-black font-extrabold text-xs rounded-xl border border-black hover:bg-amber-400 transition-colors cursor-pointer">
+              ✏️ Edit Experience
+            </button>
+            <button type="button" onclick="window.deleteExperience(${idx})" class="admin-only-action py-2.5 px-4 bg-red-50 text-red-600 rounded-xl font-bold text-xs hover:bg-red-100 transition-colors border border-red-200 cursor-pointer" title="Delete this experience card">
+              🗑️ Delete
+            </button>
+          ` : `
+            <div class="flex-1 text-xs font-mono text-zinc-400 italic">Verified Portfolio Credential</div>
+          `}
         </div>
       </div>
     `;
@@ -1418,6 +1569,12 @@
   };
 
   window.openAddExperienceModal = function () {
+    if (!isAdmin) {
+      window.openOwnerLoginModal();
+      showToast('🔒 Only the portfolio owner can add experience.');
+      return;
+    }
+
     const setVal = (id, val) => {
       const el = document.getElementById(id);
       if (el) el.value = val || '';
@@ -1444,6 +1601,12 @@
   };
 
   window.openEditExperienceModal = function (idx) {
+    if (!isAdmin) {
+      window.openOwnerLoginModal();
+      showToast('🔒 Only the portfolio owner can edit experience.');
+      return;
+    }
+
     const cards = currentData.visaCards || [];
     const c = cards[idx];
     if (!c) return;
@@ -1480,6 +1643,11 @@
 
   window.handleSaveExperience = async function (event) {
     if (event) event.preventDefault();
+    if (!isAdmin) {
+      window.openOwnerLoginModal();
+      showToast('🔒 Only the portfolio owner can save experience.');
+      return;
+    }
 
     const idx = parseInt(document.getElementById('exp-form-idx')?.value, 10);
     const role = document.getElementById('exp-form-role')?.value.trim();
@@ -1521,7 +1689,7 @@
       try {
         await fetch('/api/edit-experience', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ index: idx, id: target.id, ...target })
         });
       } catch (err) {}
@@ -1548,7 +1716,7 @@
       try {
         await fetch('/api/add-experience', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify(newCard)
         });
       } catch (err) {}
@@ -1561,6 +1729,11 @@
   };
 
   window.deleteExperience = async function (idx) {
+    if (!isAdmin) {
+      window.openOwnerLoginModal();
+      showToast('🔒 Only the portfolio owner can delete experience.');
+      return;
+    }
     if (!currentData.visaCards || !currentData.visaCards[idx]) return;
     const c = currentData.visaCards[idx];
     const title = c.role || c.education || 'Experience';
@@ -1578,7 +1751,7 @@
     try {
       await fetch('/api/delete-experience', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ id: c.id, index: idx })
       });
     } catch (err) {}
@@ -1719,12 +1892,22 @@
       });
     }
 
+    const ownerLoginModal = document.getElementById('owner-login-modal');
+    if (ownerLoginModal) {
+      ownerLoginModal.addEventListener('click', (e) => {
+        if (e.target === ownerLoginModal) window.closeOwnerLoginModal();
+      });
+    }
+
     const openDrawerBtn = document.getElementById('open-customizer-btn');
     const closeDrawerBtn = document.getElementById('close-customizer-btn');
     const drawer = document.getElementById('customizer-drawer');
 
     if (openDrawerBtn && drawer) {
-      openDrawerBtn.addEventListener('click', () => drawer.classList.add('open'));
+      openDrawerBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.handleAccountButtonClick();
+      });
     }
     if (closeDrawerBtn && drawer) {
       closeDrawerBtn.addEventListener('click', () => drawer.classList.remove('open'));
@@ -1745,6 +1928,7 @@
     setVal('custom-email', p.email);
     setVal('custom-role', p.role);
     setVal('custom-avatar-url', (p.avatar && !p.avatar.startsWith('data:')) ? p.avatar : '');
+    setVal('custom-owner-pin', adminPin);
     updateAvatarElements(p.avatar || 'https://github.com/Hemasagarraju.png');
 
     const scanOpt = document.getElementById('opt-terminal-scan');
@@ -1782,11 +1966,23 @@
     const savePersonalBtn = document.getElementById('save-personal-btn');
     if (savePersonalBtn) {
       savePersonalBtn.addEventListener('click', () => {
+        if (!isAdmin) {
+          window.openOwnerLoginModal();
+          showToast('🔒 Only the portfolio owner can modify account settings.');
+          return;
+        }
+
         const getVal = id => document.getElementById(id)?.value.trim();
         const newName = getVal('custom-name') || currentData.personal.name;
         const newRole = getVal('custom-role') || currentData.personal.role;
         const newEmail = getVal('custom-email') || currentData.personal.email;
         const newAvatar = getVal('custom-avatar-url') || currentData.personal.avatar || 'https://github.com/Hemasagarraju.png';
+        const newPin = getVal('custom-owner-pin');
+
+        if (newPin) {
+          adminPin = newPin;
+          localStorage.setItem('portfolio_admin_pin', newPin);
+        }
 
         currentData.personal.name = newName;
         currentData.personal.email = newEmail;
@@ -1806,12 +2002,13 @@
         // Sync with backend server
         fetch('/api/save-profile', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             name: newName,
             role: newRole,
             email: newEmail,
-            avatar: newAvatar
+            avatar: newAvatar,
+            pin: newPin || adminPin
           })
         })
         .then(r => r.json())
@@ -1825,13 +2022,19 @@
         renderIntro();
         renderHeroLetters();
         populateCustomizer();
-        showToast('✅ Account profile & photo saved successfully!');
+        showToast('✅ Account profile, PIN & photo saved successfully!');
       });
     }
 
     const saveProjectBtn = document.getElementById('save-project-btn');
     if (saveProjectBtn) {
       saveProjectBtn.addEventListener('click', () => {
+        if (!isAdmin) {
+          window.openOwnerLoginModal();
+          showToast('🔒 Only the portfolio owner can edit projects.');
+          return;
+        }
+
         const projSelect = document.getElementById('custom-project-select');
         const idx = parseInt(projSelect?.value, 10);
         if (isNaN(idx) || !currentData.projects || !currentData.projects[idx]) return;
@@ -1855,6 +2058,12 @@
     const addNewProjBtn = document.getElementById('add-new-proj-btn');
     if (addNewProjBtn) {
       addNewProjBtn.addEventListener('click', () => {
+        if (!isAdmin) {
+          window.openOwnerLoginModal();
+          showToast('🔒 Only the portfolio owner can create projects.');
+          return;
+        }
+
         const newP = {
           id: `proj-${Date.now()}`,
           title: "New Project Showcase",
@@ -1878,6 +2087,10 @@
     const resetBtn = document.getElementById('reset-btn');
     if (resetBtn) {
       resetBtn.addEventListener('click', () => {
+        if (!isAdmin) {
+          window.openOwnerLoginModal();
+          return;
+        }
         if (confirm('Reset to original default data from portfolio-data.js?')) {
           localStorage.removeItem('itsvg_exact_model_data');
           localStorage.removeItem('portfolio_user_profile');
@@ -1892,6 +2105,12 @@
 
   // Window Avatar Handlers
   window.handleAvatarFileUpload = function (event) {
+    if (!isAdmin) {
+      window.openOwnerLoginModal();
+      showToast('🔒 Only the portfolio owner can upload a profile photo.');
+      return;
+    }
+
     const file = event.target.files && event.target.files[0];
     if (!file) return;
 
@@ -1941,7 +2160,7 @@
         // Send to server to write avatar.png and update portfolio-data.js
         fetch('/api/upload-avatar', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ data: compressedDataUrl })
         })
         .then(res => res.json())
@@ -1979,7 +2198,7 @@
       return;
     }
     updateAvatarElements(url);
-    showToast('👁️ Live preview updated! Click "Save Profile & Photo" to apply.');
+    showToast('👁️ Live preview updated! Click "Save Profile, PIN & Photo" to apply.');
   };
 
   window.usePresetAvatar = function (type) {
@@ -1988,7 +2207,109 @@
     if (urlInput) urlInput.value = url;
     updateAvatarElements(url);
     currentData.personal.avatar = url;
-    showToast('🐙 GitHub avatar loaded! Click "Save Profile & Photo" to apply.');
+    showToast('🐙 GitHub avatar loaded! Click "Save Profile, PIN & Photo" to apply.');
+  };
+
+  // Window Authentication Controls
+  window.handleAccountButtonClick = function () {
+    if (isAdmin) {
+      const drawer = document.getElementById('customizer-drawer');
+      if (drawer) drawer.classList.add('open');
+    } else {
+      window.openOwnerLoginModal();
+    }
+  };
+
+  window.openOwnerLoginModal = function () {
+    const modal = document.getElementById('owner-login-modal');
+    if (modal) {
+      modal.classList.add('open');
+      const err = document.getElementById('owner-login-error');
+      if (err) {
+        err.textContent = '';
+        err.classList.add('hidden');
+      }
+      const pinInput = document.getElementById('owner-login-pin');
+      if (pinInput) {
+        pinInput.value = '';
+        setTimeout(() => pinInput.focus(), 150);
+      }
+    }
+  };
+
+  window.closeOwnerLoginModal = function () {
+    const modal = document.getElementById('owner-login-modal');
+    if (modal) modal.classList.remove('open');
+  };
+
+  window.handleOwnerLoginSubmit = async function (event) {
+    if (event) event.preventDefault();
+    const pinInput = document.getElementById('owner-login-pin');
+    const err = document.getElementById('owner-login-error');
+    const enteredPin = (pinInput ? pinInput.value : '').trim();
+
+    if (!enteredPin) {
+      if (err) {
+        err.textContent = 'Please enter your Owner PIN.';
+        err.classList.remove('hidden');
+      }
+      return;
+    }
+
+    let isValid = (enteredPin === adminPin);
+
+    // Also check server if available
+    try {
+      const resp = await fetch('/api/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: enteredPin })
+      });
+      const data = await resp.json();
+      if (data && typeof data.valid === 'boolean') {
+        isValid = data.valid;
+      }
+    } catch (e) {
+      // offline / static fallback uses adminPin
+    }
+
+    if (isValid) {
+      isAdmin = true;
+      adminPin = enteredPin;
+      localStorage.setItem('portfolio_is_admin', 'true');
+      localStorage.setItem('portfolio_admin_pin', enteredPin);
+      syncAdminModeUI();
+      renderAll();
+      window.closeOwnerLoginModal();
+      const drawer = document.getElementById('customizer-drawer');
+      if (drawer) drawer.classList.add('open');
+      showToast('👑 Welcome back, Hemasagar! Owner Mode unlocked.');
+    } else {
+      if (err) {
+        err.textContent = '❌ Incorrect PIN. Please try again.';
+        err.classList.remove('hidden');
+      }
+      if (pinInput) {
+        pinInput.classList.add('border-red-500');
+        setTimeout(() => pinInput.classList.remove('border-red-500'), 1500);
+      }
+    }
+  };
+
+  window.logoutAdmin = function () {
+    isAdmin = false;
+    localStorage.removeItem('portfolio_is_admin');
+    syncAdminModeUI();
+    const drawer = document.getElementById('customizer-drawer');
+    if (drawer) drawer.classList.remove('open');
+    renderAll();
+    showToast('🔒 Locked into Visitor Mode (Owner logged out)');
+  };
+
+  window.toggleShowOwnerPin = function () {
+    const pinInput = document.getElementById('custom-owner-pin');
+    if (!pinInput) return;
+    pinInput.type = pinInput.type === 'password' ? 'text' : 'password';
   };
 
   function showToast(msg) {

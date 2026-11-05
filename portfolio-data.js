@@ -45,6 +45,11 @@ const portfolioData = {
     repo: "https://github.com/Hemasagarraju/hemasagar-portfolio"
   },
 
+  // Owner Access Protection (Only Hemasagar can add/edit/delete projects & achievements)
+  admin: {
+    pin: "2026"
+  },
+
   // Global Impact Stats
   impact: {
     heading: "Our projects  are used and loved by people from all around the world",

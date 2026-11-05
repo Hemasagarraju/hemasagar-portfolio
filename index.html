@@ -72,12 +72,18 @@
           <!-- Dynamically populated -->
         </div>
 
-        <!-- Account Trigger with Custom Avatar -->
-        <button id="open-customizer-btn"
+        <!-- Owner Mode Active Indicator -->
+        <div id="owner-active-badge" class="hidden items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-400 text-emerald-900 text-xs font-mono font-bold shadow-sm">
+          <span>👑 Owner</span>
+          <button type="button" onclick="window.logoutAdmin()" class="text-red-600 hover:text-red-800 font-bold ml-1 cursor-pointer" title="Exit Owner Mode (Preview as normal visitor)">Lock</button>
+        </div>
+
+        <!-- Account / Owner Trigger with Custom Avatar -->
+        <button id="open-customizer-btn" type="button" onclick="window.handleAccountButtonClick()"
           class="flex items-center gap-2 pl-2 pr-3.5 py-1.5 rounded-full bg-zinc-900 text-white hover:bg-zinc-800 text-xs font-semibold shadow-sm transition-all cursor-pointer group"
-          title="Account & Profile Settings">
+          title="Account & Owner Settings">
           <img id="nav-avatar-img" class="w-5 h-5 rounded-full object-cover border border-zinc-700 bg-zinc-800" src="https://github.com/Hemasagarraju.png" alt="Avatar">
-          <span class="hidden sm:inline">Account</span>
+          <span id="nav-account-label" class="hidden sm:inline">Account</span>
         </button>
 
       </div>
@@ -282,9 +288,9 @@
         </p>
       </div>
 
-      <!-- Direct Add Project Button -->
-      <button type="button" onclick="window.openAddProjectModal()"
-        class="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#FBC138] hover:bg-amber-400 text-black font-extrabold text-sm border-2 border-black shadow-[4px_4px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0px_#000] transition-all cursor-pointer">
+      <!-- Direct Add Project Button (Owner Only) -->
+      <button type="button" onclick="window.openAddProjectModal()" id="btn-add-project"
+        class="admin-only-btn shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#FBC138] hover:bg-amber-400 text-black font-extrabold text-sm border-2 border-black shadow-[4px_4px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0px_#000] transition-all cursor-pointer">
         <span class="text-base font-bold leading-none">➕</span>
         <span>Add Project</span>
       </button>
@@ -334,8 +340,9 @@
         </p>
       </div>
 
-      <!-- Add Experience Button -->
-      <button type="button" onclick="window.openAddExperienceModal()" class="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#FBC138] hover:bg-amber-400 text-black font-extrabold text-sm border-2 border-black shadow-[4px_4px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0px_#000] transition-all cursor-pointer">
+      <!-- Add Experience Button (Owner Only) -->
+      <button type="button" onclick="window.openAddExperienceModal()" id="btn-add-experience"
+        class="admin-only-btn shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#FBC138] hover:bg-amber-400 text-black font-extrabold text-sm border-2 border-black shadow-[4px_4px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0px_#000] transition-all cursor-pointer">
         <span class="text-base font-bold leading-none">➕</span>
         <span>Add Experience</span>
       </button>
@@ -364,8 +371,9 @@
         </p>
       </div>
 
-      <!-- Add Achievement Button directly on website -->
-      <button type="button" onclick="window.openAddAchievementModal()" class="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#FBC138] hover:bg-amber-400 text-black font-extrabold text-sm border-2 border-black shadow-[4px_4px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0px_#000] transition-all cursor-pointer">
+      <!-- Add Achievement Button directly on website (Owner Only) -->
+      <button type="button" onclick="window.openAddAchievementModal()" id="btn-add-achievement"
+        class="admin-only-btn shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#FBC138] hover:bg-amber-400 text-black font-extrabold text-sm border-2 border-black shadow-[4px_4px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0px_#000] transition-all cursor-pointer">
         <span class="text-base font-bold leading-none">🏆</span>
         <span>Add Achievement</span>
       </button>
@@ -468,6 +476,54 @@
       class="w-14 h-14 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-2xl text-xl cursor-pointer">
       💬
     </button>
+  </div>
+
+  <!-- ======================================================================
+       9B. OWNER VERIFICATION & LOGIN MODAL
+       ====================================================================== -->
+  <div id="owner-login-modal" class="modal-backdrop">
+    <div class="modal-content relative p-6 sm:p-8 space-y-5 max-w-md">
+      <button onclick="window.closeOwnerLoginModal()"
+        class="absolute top-4 right-4 w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 flex items-center justify-center font-bold text-sm cursor-pointer z-10">
+        ✕
+      </button>
+
+      <div class="border-b border-zinc-200 pb-4 text-center">
+        <div class="w-14 h-14 rounded-full bg-amber-100 text-amber-800 border-2 border-black shadow-[3px_3px_0px_#000] flex items-center justify-center text-2xl mx-auto mb-3">
+          🔐
+        </div>
+        <h3 class="text-2xl font-extrabold text-zinc-900">Owner Verification</h3>
+        <p class="text-xs text-zinc-500 mt-1">
+          Only the portfolio owner (Hemasagar) can add or edit projects, achievements, and credentials.
+        </p>
+      </div>
+
+      <form id="owner-login-form" onsubmit="window.handleOwnerLoginSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-mono font-bold text-zinc-800 mb-1 text-center">
+            ENTER OWNER PIN
+          </label>
+          <input type="password" id="owner-login-pin" required maxlength="12"
+            class="custom-input font-mono text-center tracking-widest text-xl font-extrabold py-3"
+            placeholder="••••" autofocus autocomplete="current-password">
+          <p id="owner-login-error" class="hidden text-xs font-bold text-red-600 font-mono text-center mt-1.5"></p>
+          <p class="text-[11px] text-zinc-400 font-mono text-center mt-1.5">
+            Default Owner PIN: <strong class="text-zinc-700">2026</strong>
+          </p>
+        </div>
+
+        <div class="flex items-center gap-3 pt-2">
+          <button type="button" onclick="window.closeOwnerLoginModal()"
+            class="flex-1 py-2.5 rounded-xl border border-zinc-300 text-zinc-700 font-bold text-xs hover:bg-zinc-100 transition-colors cursor-pointer">
+            Cancel
+          </button>
+          <button type="submit"
+            class="flex-1 py-2.5 rounded-xl bg-[#FBC138] hover:bg-amber-400 text-black font-extrabold text-xs border-2 border-black shadow-[3px_3px_0px_#000] active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer">
+            🔓 Unlock Owner Mode
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- ======================================================================
@@ -1066,10 +1122,20 @@
           <input type="email" id="custom-email" class="custom-input" placeholder="hemasagarraju94@gmail.com">
         </div>
 
+        <!-- Owner Security PIN -->
+        <div class="pt-2 border-t border-zinc-200">
+          <label class="block text-xs font-mono font-bold text-zinc-700 mb-1">Owner Security PIN (Only you can edit)</label>
+          <div class="flex items-center gap-2">
+            <input type="password" id="custom-owner-pin" class="custom-input font-mono text-xs font-bold" placeholder="2026">
+            <button type="button" onclick="window.toggleShowOwnerPin()" class="px-2.5 py-2 bg-zinc-200 hover:bg-zinc-300 text-zinc-800 text-xs font-bold rounded-lg cursor-pointer" title="Toggle Show/Hide PIN">👁️</button>
+          </div>
+          <p class="text-[10px] text-zinc-500 mt-1">Visitors cannot add, edit, or delete anything without this PIN.</p>
+        </div>
+
         <button id="save-personal-btn"
           class="w-full py-2.5 bg-black text-white font-bold text-xs rounded-xl hover:bg-zinc-800 transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-[2px_2px_0px_#000]">
           <span>💾</span>
-          <span>Save Profile & Photo</span>
+          <span>Save Profile, PIN & Photo</span>
         </button>
       </div>
 
@@ -1178,9 +1244,14 @@
     </div>
 
     <!-- Drawer Footer Actions -->
-    <div class="p-4 border-t border-zinc-200 bg-zinc-50">
+    <div class="p-4 border-t border-zinc-200 bg-zinc-50 space-y-2">
+      <button type="button" onclick="window.logoutAdmin()"
+        class="w-full py-2.5 bg-zinc-900 text-white font-bold text-xs rounded-xl hover:bg-black transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
+        <span>🔒</span>
+        <span>Exit Owner Mode (Lock Portfolio)</span>
+      </button>
       <button id="reset-btn"
-        class="w-full py-2.5 border border-zinc-300 text-zinc-700 font-bold text-xs rounded-xl hover:bg-zinc-100 transition-colors cursor-pointer">
+        class="w-full py-2 border border-zinc-300 text-zinc-600 font-bold text-xs rounded-xl hover:bg-zinc-100 transition-colors cursor-pointer">
         Reset to Original Defaults
       </button>
     </div>

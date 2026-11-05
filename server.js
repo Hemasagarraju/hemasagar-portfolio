@@ -216,6 +216,12 @@ function updatePortfolioDataPersonal(updates) {
 }
 
 function getOwnerPin() {
+  if (process.env.ADMIN_PIN) {
+    return String(process.env.ADMIN_PIN).trim();
+  }
+  if (process.env.PORTFOLIO_ADMIN_PIN) {
+    return String(process.env.PORTFOLIO_ADMIN_PIN).trim();
+  }
   try {
     delete require.cache[require.resolve(PORTFOLIO_DATA_FILE)];
     const pData = require(PORTFOLIO_DATA_FILE);

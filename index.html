@@ -505,11 +505,8 @@
           </label>
           <input type="password" id="owner-login-pin" required maxlength="12"
             class="custom-input font-mono text-center tracking-widest text-xl font-extrabold py-3"
-            placeholder="••••" autofocus autocomplete="current-password">
+            placeholder="Enter PIN" autofocus autocomplete="current-password">
           <p id="owner-login-error" class="hidden text-xs font-bold text-red-600 font-mono text-center mt-1.5"></p>
-          <p class="text-[11px] text-zinc-400 font-mono text-center mt-1.5">
-            Default Owner PIN: <strong class="text-zinc-700">2026</strong>
-          </p>
         </div>
 
         <div class="flex items-center gap-3 pt-2">
@@ -1126,7 +1123,7 @@
         <div class="pt-2 border-t border-zinc-200">
           <label class="block text-xs font-mono font-bold text-zinc-700 mb-1">Owner Security PIN (Only you can edit)</label>
           <div class="flex items-center gap-2">
-            <input type="password" id="custom-owner-pin" class="custom-input font-mono text-xs font-bold" placeholder="2026">
+            <input type="password" id="custom-owner-pin" class="custom-input font-mono text-xs font-bold" placeholder="Enter new PIN">
             <button type="button" onclick="window.toggleShowOwnerPin()" class="px-2.5 py-2 bg-zinc-200 hover:bg-zinc-300 text-zinc-800 text-xs font-bold rounded-lg cursor-pointer" title="Toggle Show/Hide PIN">👁️</button>
           </div>
           <p class="text-[10px] text-zinc-500 mt-1">Visitors cannot add, edit, or delete anything without this PIN.</p>

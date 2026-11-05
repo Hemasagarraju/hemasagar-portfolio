@@ -614,7 +614,7 @@
         • <span class="text-pink-400 font-bold">skills</span> : Tech stack and languages<br>
         • <span class="text-indigo-400 font-bold">projects</span> : List portfolio projects<br>
         • <span class="text-emerald-300 font-bold">repo</span> : Portfolio GitHub repository<br>
-        • <span class="text-emerald-400 font-bold">login &lt;pin&gt;</span> : Unlock owner mode (default PIN: 2026)<br>
+        • <span class="text-emerald-400 font-bold">login &lt;pin&gt;</span> : Unlock owner mode with your PIN<br>
         • <span class="text-amber-400 font-bold">logout</span> : Lock portfolio back to visitor mode<br>
         • <span class="text-amber-400 font-bold">theme &lt;color&gt;</span> : emerald | cyan | amber<br>
         • <span class="text-zinc-400 font-bold">clear</span> : Clear terminal output

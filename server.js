@@ -2,6 +2,24 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+// Automatically load .env file if it exists
+try {
+  const envPath = path.join(__dirname, '.env');
+  if (fs.existsSync(envPath)) {
+    const envLines = fs.readFileSync(envPath, 'utf8').split('\n');
+    for (const line of envLines) {
+      const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+      if (match) {
+        const key = match[1];
+        let val = (match[2] || '').trim().replace(/^['"](.*)['"]$/, '$1');
+        if (process.env[key] === undefined) {
+          process.env[key] = val;
+        }
+      }
+    }
+  }
+} catch (e) {}
+
 let PORT = parseInt(process.env.PORT, 10) || 3000;
 const BASE_DIR = __dirname;
 const PORTFOLIO_DATA_FILE = path.join(BASE_DIR, 'portfolio-data.js');
